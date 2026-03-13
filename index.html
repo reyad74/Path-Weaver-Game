@@ -57,6 +57,7 @@ border-radius: 20px;
 border: 1px solid rgba(255, 255, 255, 0.1);
 box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 backdrop-filter: blur(10px);
+-webkit-backdrop-filter: blur(10px);
 max-width: 90vw;
 overflow: auto;
 justify-items: center;
@@ -78,7 +79,7 @@ transition: all 0.3s ease;
 box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 position: relative;
 overflow: hidden;
-aspect-ratio: 1;
+aspect-ratio: 1 / 1;
 }
 
 .cell::before {
@@ -311,15 +312,16 @@ width: 100%;
 height: 100%;
 background-color: rgba(0, 0, 0, 0.8);
 backdrop-filter: blur(5px);
+-webkit-backdrop-filter: blur(5px);
 }
 
 .modal-content {
 background: linear-gradient(145deg, #1a1a2e, #16213e);
 margin: 15% auto;
-padding: 30px;
+padding: clamp(20px, 5vw, 30px);
 border: 1px solid #00d4ff;
 border-radius: 20px;
-width: 80%;
+width: 90%;
 max-width: 400px;
 text-align: center;
 box-shadow: 0 0 50px rgba(0, 212, 255, 0.5);
@@ -368,19 +370,20 @@ margin: 0;
 /* Sound toggle */
 .sound-toggle {
 position: absolute;
-top: 20px;
-right: 20px;
+top: clamp(10px, 2vw, 20px);
+right: clamp(10px, 2vw, 20px);
 background: rgba(0, 212, 255, 0.1);
 border: 1px solid #00d4ff;
 border-radius: 50%;
-width: 50px;
-height: 50px;
+width: clamp(40px, 8vw, 50px);
+height: clamp(40px, 8vw, 50px);
 cursor: pointer;
 display: flex;
 align-items: center;
 justify-content: center;
-font-size: 1.2rem;
+font-size: clamp(1rem, 3vw, 1.2rem);
 transition: all 0.3s ease;
+z-index: 100;
 }
 
 .sound-toggle:hover {
@@ -407,6 +410,8 @@ Grid: <span id="gridSize">3x3</span> |
 Moves: <span id="moves">0</span>
 </div>
 
+<p style="text-align: center; margin: 10px 0; font-size: 0.9rem; opacity: 0.8;">Draw a path from START to END, visiting all cells!</p>
+
 <div id="grid"></div>
 
 <div class="controls">
@@ -430,10 +435,14 @@ Moves: <span id="moves">0</span>
 
 // Audio context for sound effects
 let audioContext;
-let soundEnabled = true;
+let soundEnabled = localStorage.getItem('pathWeaverSound') !== 'false'; // Default true
 let moveSound, winSound;
+let audioInitialized = false;
 
 function initAudio() {
+if (audioInitialized) return;
+
+try {
 if (typeof AudioContext !== 'undefined') {
 audioContext = new AudioContext();
 } else if (typeof webkitAudioContext !== 'undefined') {
@@ -441,15 +450,41 @@ audioContext = new webkitAudioContext();
 }
 
 if (audioContext) {
-// Create simple sound effects using oscillators
-moveSound = createBeep(200, 0.1, 'sine');
-winSound = createBeep(400, 0.5, 'triangle');
+if (audioContext.state === 'suspended') {
+// Resume audio context on user interaction
+const resumeAudio = () => {
+audioContext.resume().then(() => {
+audioInitialized = true;
+createSounds();
+document.removeEventListener('click', resumeAudio);
+document.removeEventListener('touchstart', resumeAudio);
+});
+};
+document.addEventListener('click', resumeAudio, { once: true });
+document.addEventListener('touchstart', resumeAudio, { once: true });
+} else {
+audioInitialized = true;
+createSounds();
 }
+}
+} catch (e) {
+console.warn('Audio not supported:', e);
+audioInitialized = true; // Mark as initialized to prevent retries
+}
+}
+
+function createSounds() {
+if (!audioContext) return;
+
+// Create simple sound effects using oscillators
+moveSound = createBeep(220, 0.08, 'sine');
+winSound = createBeep(440, 0.4, 'triangle');
 }
 
 function createBeep(frequency, duration, type) {
 return function() {
-if (!audioContext || !soundEnabled) return;
+if (!audioContext || !soundEnabled || audioContext.state !== 'running') return;
+try {
 const oscillator = audioContext.createOscillator();
 const gainNode = audioContext.createGain();
 
@@ -459,19 +494,26 @@ gainNode.connect(audioContext.destination);
 oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
 oscillator.type = type;
 
-gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
+gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
 
 oscillator.start(audioContext.currentTime);
 oscillator.stop(audioContext.currentTime + duration);
+} catch (e) {
+console.warn('Sound playback failed:', e);
+}
 };
 }
 
 function toggleSound() {
 soundEnabled = !soundEnabled;
+localStorage.setItem('pathWeaverSound', soundEnabled);
 const toggle = document.getElementById('soundToggle');
 toggle.innerText = soundEnabled ? '🔊' : '🔇';
 toggle.classList.toggle('muted');
+if (soundEnabled && !audioInitialized) {
+initAudio();
+}
 }
 
 let level=1
@@ -487,13 +529,39 @@ const gridSizeEl=document.getElementById("gridSize")
 const movesEl=document.getElementById("moves")
 const winModal=document.getElementById("winModal")
 
+// Initialize sound toggle after DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+const soundToggle = document.getElementById('soundToggle');
+if (soundToggle) {
+soundToggle.innerText = soundEnabled ? '🔊' : '🔇';
+if (!soundEnabled) soundToggle.classList.add('muted');
+}
+});
+
 initAudio()
 initGame()
+
+// Keyboard support
+document.addEventListener('keydown', (e) => {
+if (e.key === 'r' || e.key === 'R') {
+e.preventDefault();
+restartGame();
+} else if (e.key === 'n' || e.key === 'N') {
+e.preventDefault();
+nextLevel();
+} else if (e.key === 'Escape') {
+e.preventDefault();
+closeModal();
+} else if (e.key === 'm' || e.key === 'M') {
+e.preventDefault();
+toggleSound();
+}
+});
 
 function initGame(){
 
 size=2+level
-if(size>8) size=8  // Increased max size
+if(size>10) size=10  // Allow larger grids
 
 levelEl.innerText=level
 gridSizeEl.innerText=size+"x"+size
@@ -504,10 +572,16 @@ grid.style.gridTemplateColumns=`repeat(${size},1fr)`
 
 path=[]
 
-// Generate solvable END with better logic
+// Generate solvable END
+let attempts = 0;
 do{
-endIndex=Math.floor(Math.random()*(size*size-1))+1
-}while(!isSolvable(endIndex))
+endIndex = Math.floor(Math.random() * (size * size - 1)) + 1;
+attempts++;
+if (attempts > 50) {
+endIndex = size * size - 1; // Fallback to bottom-right corner
+break;
+}
+}while(!isSolvable(endIndex));
 
 for(let i=0;i<size*size;i++){
 
@@ -533,8 +607,13 @@ cell.addEventListener("mouseenter",()=>moveDraw(i))
 
 cell.addEventListener("touchstart",(e)=>{
 e.preventDefault()
+e.stopPropagation()
 startDraw(i)
-})
+}, { passive: false })
+
+cell.addEventListener("touchend",(e)=>{
+e.preventDefault()
+}, { passive: false })
 
 grid.appendChild(cell)
 
@@ -547,13 +626,13 @@ const startColor = (0 + 0) % 2
 const endColor = (Math.floor(end/size) + end % size) % 2
 const total = size * size
 
-// For even grids, ensure different colors for solvability
+// For even grids, ensure different colors (basic check)
 if(total % 2 === 0){
 return startColor !== endColor
 }
 
-// For odd grids, always solvable in theory, but add some randomness
-return Math.random() > 0.3
+// For odd grids, ensure end is not start
+return end !== 0
 }
 
 function startDraw(idx){
@@ -566,7 +645,7 @@ moves++
 
 updateUI()
 
-if(moveSound) moveSound()
+if(moveSound && typeof moveSound === 'function') moveSound()
 
 }
 
@@ -595,7 +674,7 @@ moves++
 updateUI()
 checkWin(idx)
 
-if(moveSound) moveSound()
+if(moveSound && typeof moveSound === 'function') moveSound()
 
 }
 
@@ -605,7 +684,7 @@ path.pop()
 moves++
 updateUI()
 
-if(moveSound) moveSound()
+if(moveSound && typeof moveSound === 'function') moveSound()
 
 }
 
@@ -620,10 +699,15 @@ if(!isDrawing) return
 e.preventDefault()
 
 const touch = e.touches[0]
+if (!touch) return
+
 const el = document.elementFromPoint(touch.clientX, touch.clientY)
 
 if(el && el.classList.contains("cell")){
-moveDraw(parseInt(el.dataset.index))
+const idx = parseInt(el.dataset.index)
+if (!isNaN(idx)) {
+moveDraw(idx)
+}
 }
 
 },{passive:false})
@@ -656,7 +740,7 @@ const total=size*size
 
 if(idx===endIndex && path.length===total){
 
-if(winSound) winSound()
+if(winSound && typeof winSound === 'function') winSound()
 
 setTimeout(()=>{
 showModal()
