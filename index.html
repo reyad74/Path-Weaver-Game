@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Path Weaver | Professional Logic Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050508;
+            --panel-bg: #12121a;
+            --neon-cyan: #00f2ff;
+            --neon-purple: #7000ff;
+            --text-high: #ffffff;
+            --text-low: #888899;
+        }
+
+        /* Standardize Fonts & Reset */
+        * { 
+            margin: 0; padding: 0; box-sizing: border-box; 
+            font-family: 'Inter', 'Arial', sans-serif !important; 
+        }
+
+        body {
+            background: radial-gradient(circle at 25% 10%, rgba(0, 242, 255, 0.15), transparent 58%),
+                        radial-gradient(circle at 85% 25%, rgba(112, 0, 255, 0.18), transparent 55%),
+                        var(--bg-color);
+            color: var(--text-high);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            touch-action: none;
+            padding: 20px;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(circle at 55% 40%, rgba(255, 255, 255, 0.08), transparent 52%),
+                        radial-gradient(circle at 20% 80%, rgba(0, 255, 255, 0.06), transparent 60%);
+            opacity: 0.6;
+            mix-blend-mode: screen;
+        }
+
+        body.has-overlay .game-header {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        /* --- Header: Clean & Spaced --- */
+        .game-header {
+            text-align: center;
+            margin-bottom: 30px;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: clamp(2rem, 10vw, 3rem);
+            font-weight: 900;
+            letter-spacing: 4px;
+            color: var(--neon-cyan);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            text-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .badge {
+            background: var(--panel-bg);
+            padding: 8px 20px;
+            border-radius: 50px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--text-low);
+            text-transform: uppercase;
+        }
+
+        .badge span { color: var(--neon-cyan); margin-left: 5px; }
+
+        /* --- Game Board Area --- */
+        #main-container {
+            position: relative;
+            background: var(--panel-bg);
+            padding: clamp(15px, 5vw, 30px);
+            border-radius: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 70px rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 300px;
+        }
+
+        #grid {
+            display: grid;
+            gap: 12px;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .cell {
+            width: clamp(50px, 12vw, 65px);
+            height: clamp(50px, 12vw, 65px);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 900;
+            transition: all 0.2s ease;
+        }
+
+        /* Dynamic Labels */
+        .cell.start { border: 2.5px solid var(--neon-cyan); color: var(--neon-cyan); }
+        .cell.start::after { content: 'START'; }
+
+        .cell.end { border: 2.5px solid var(--neon-purple); color: var(--neon-purple); }
+        .cell.end::after { content: 'END'; }
+
+        .cell.active {
+            background: var(--neon-cyan);
+            color: #000;
+            border-color: #fff;
+            box-shadow: 0 0 25px var(--neon-cyan);
+            transform: scale(0.96);
+        }
+
+        .cell.path { background: rgba(0, 242, 255, 0.15); border-color: var(--neon-cyan); }
+
+        /* --- Professional Overlays (Fullscreen Intro + Win) --- */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 5, 10, 0.9);
+            -webkit-backdrop-filter: blur(22px);
+            backdrop-filter: blur(22px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            animation: fadeIn 0.6s ease;
+        }
+
+        .overlay .overlay-card {
+            background: rgba(18, 18, 26, 0.82);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 30px;
+            padding: 40px 30px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(25px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hidden { visibility: hidden; opacity: 0; pointer-events: none; }
+
+        .overlay h2 { 
+            font-size: clamp(2rem, 8vw, 2.8rem); 
+            color: var(--neon-cyan); 
+            margin-bottom: 15px; 
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 22px rgba(0, 242, 255, 0.45);
+        }
+
+        .overlay h2.success { 
+            color: #00ffaa;
+        }
+
+        .overlay p { 
+            color: var(--text-low); 
+            font-size: 1.05rem; 
+            line-height: 1.6; 
+            margin-bottom: 35px; 
+            max-width: 360px;
+        }
+
+        .overlay .glow-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 260px;
+            margin: 0 auto;
+            border-radius: 999px;
+            padding: 16px 0;
+            background: linear-gradient(145deg, rgba(0, 242, 255, 0.95), rgba(112, 0, 255, 0.9));
+            box-shadow: 0 16px 35px rgba(0, 242, 255, 0.55), 0 0 30px rgba(112, 0, 255, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #000;
+            font-weight: 900;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .overlay .glow-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 50px rgba(0, 242, 255, 0.65), 0 0 40px rgba(112, 0, 255, 0.4);
+        }
+
+        .overlay .glow-button:active {
+            transform: translateY(0);
+            box-shadow: 0 14px 35px rgba(0, 242, 255, 0.55), 0 0 25px rgba(112, 0, 255, 0.35);
+        }
+
+        .overlay b { color: #fff; }
+
+        button {
+            background: var(--neon-cyan);
+            color: #000;
+            border: none;
+            padding: 16px 50px;
+            border-radius: 14px;
+            font-size: 1.1rem;
+            font-weight: 900;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 10px 25px rgba(0, 242, 255, 0.4);
+            transition: transform 0.2s ease;
+        }
+
+        button:active { transform: scale(0.95); }
+
+        .hint-text {
+            margin-top: 30px;
+            color: #444;
+            font-size: 0.85rem;
+            text-align: center;
+            max-width: 320px;
+            line-height: 1.4;
+            font-weight: bold;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .stats-bar {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .overlay {
+                padding: 20px;
+            }
+            .overlay h2 {
+                font-size: 1.8rem;
+            }
+            .overlay p {
+                font-size: 1rem;
+                margin-bottom: 25px;
+            }
+            button {
+                padding: 14px 40px;
+                font-size: 1rem;
+            }
+            .hint-text {
+                font-size: 0.8rem;
+                margin-top: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="game-header">
+        <h1>PATH WEAVER</h1>
+        <div class="stats-bar">
+            <div class="badge">STAGE <span><span id="level-num">1</span></span></div>
+            <div class="badge">GRID <span><span id="grid-size">3x3</span></span></div>
+        </div>
+    </header>
+
+    <main id="main-container">
+        <div id="grid"></div>
+
+        <div id="start-overlay" class="overlay">
+            <div class="overlay-card">
+                <h2>IQ MISSION</h2>
+                <p>Connect <b>START</b> to <b>END</b>.<br>Requirement: Fill <b>every single block</b> in one continuous path.</p>
+                <button class="glow-button" onclick="startGame()">Engage</button>
+            </div>
+        </div>
+
+        <div id="win-overlay" class="overlay hidden">
+            <div class="overlay-card">
+                <h2 class="success">CLEARED!</h2>
+                <p>Logic validated. Complexity increasing for the next stage...</p>
+                <button class="glow-button" onclick="nextLevel()">Continue</button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="hint-text">
+        TIP: Drag from START. You cannot skip any block to unlock the next level.
+    </footer>
+
+<script>
+    let level = 1;
+    let size = 3;
+    let path = [];
+    let isDrawing = false;
+    
+    const gridEl = document.getElementById('grid');
+    const levelVal = document.getElementById('level-num');
+    const sizeVal = document.getElementById('grid-size');
+
+    // Keep the intro overlay active until the player starts the game
+    document.body.classList.add('has-overlay');
+
+    function startGame() {
+        document.getElementById('start-overlay').classList.add('hidden');
+        document.body.classList.remove('has-overlay');
+        initGame();
+    }
+
+    function initGame() {
+        size = 2 + Math.ceil(level / 2);
+        if (size > 6) size = 6; 
+
+        levelVal.innerText = level;
+        sizeVal.innerText = `${size}x${size}`;
+        
+        path = [];
+        gridEl.innerHTML = '';
+        gridEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+        document.getElementById('win-overlay').classList.add('hidden');
+
+        for (let i = 0; i < size * size; i++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.dataset.index = i;
+
+            if (i === 0) cell.classList.add('start');
+            if (i === (size * size) - 1) cell.classList.add('end');
+
+            // Listeners
+            cell.addEventListener('mousedown', () => startDraw(i));
+            cell.addEventListener('mouseenter', () => moveDraw(i));
+            cell.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(i); });
+
+            gridEl.appendChild(cell);
+        }
+    }
+
+    function startDraw(idx) {
+        if (idx !== 0) return;
+        isDrawing = true;
+        path = [idx];
+        updateUI();
+    }
+
+    function moveDraw(idx) {
+        if (!isDrawing) return;
+        const last = path[path.length - 1];
+        if (last === idx) return;
+
+        const r = Math.floor(idx / size), c = idx % size;
+        const lr = Math.floor(last / size), lc = last % size;
+
+        const isAdjacent = Math.abs(r - lr) + Math.abs(c - lc) === 1;
+
+        if (isAdjacent) {
+            if (!path.includes(idx)) {
+                path.push(idx);
+                updateUI();
+                checkWin(idx);
+            } else if (path.length > 1 && idx === path[path.length - 2]) {
+                path.pop();
+                updateUI();
+            }
+        }
+    }
+
+    window.addEventListener('touchmove', (e) => {
+        if (!isDrawing) return;
+        const t = e.touches[0];
+        const el = document.elementFromPoint(t.clientX, t.clientY);
+        if (el && el.classList.contains('cell')) moveDraw(parseInt(el.dataset.index));
+    }, { passive: false });
+
+    function updateUI() {
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(c => c.classList.remove('active', 'path'));
+        path.forEach((idx, i) => {
+            cells[idx].classList.add('active');
+            if (i < path.length - 1) cells[idx].classList.add('path');
+        });
+    }
+
+    function checkWin(idx) {
+        const total = size * size;
+        if (idx === total - 1 && path.length === total) {
+            isDrawing = false;
+            setTimeout(() => {
+                document.getElementById('win-overlay').classList.remove('hidden');
+            }, 300);
+        }
+    }
+
+    function nextLevel() {
+        level++;
+        initGame();
+    }
+
+    const stopDrawing = () => {
+        if (!isDrawing) return;
+        isDrawing = false;
+        const total = size * size;
+        if (path.length < total || path[path.length-1] !== (total-1)) {
+            path = [];
+            updateUI();
+        }
+    };
+
+    window.addEventListener('mouseup', stopDrawing);
+    window.addEventListener('touchend', stopDrawing);
+
+</script>
+</body>
+</html>
