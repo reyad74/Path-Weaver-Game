@@ -1,453 +1,724 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Path Weaver | Professional Logic Game</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-color: #050508;
-            --panel-bg: #12121a;
-            --neon-cyan: #00f2ff;
-            --neon-purple: #7000ff;
-            --text-high: #ffffff;
-            --text-low: #888899;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Path Weaver</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
 
-        /* Standardize Fonts & Reset */
-        * { 
-            margin: 0; padding: 0; box-sizing: border-box; 
-            font-family: 'Inter', 'Arial', sans-serif !important; 
-        }
+body{
+background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+color: #ffffff;
+font-family: 'Orbitron', monospace;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+min-height: 100vh;
+margin: 0;
+padding: clamp(10px, 5vw, 20px);
+box-sizing: border-box;
+width: 100%;
+}
 
-        body {
-            background: radial-gradient(circle at 25% 10%, rgba(0, 242, 255, 0.15), transparent 58%),
-                        radial-gradient(circle at 85% 25%, rgba(112, 0, 255, 0.18), transparent 55%),
-                        var(--bg-color);
-            color: var(--text-high);
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            touch-action: none;
-            padding: 20px;
-            position: relative;
-        }
+h1{
+color: #00d4ff;
+text-shadow: 0 0 20px #00d4ff, 0 0 40px #00d4ff;
+font-size: clamp(1.5rem, 8vw, 3rem);
+font-weight: 900;
+margin-bottom: 20px;
+letter-spacing: 2px;
+animation: glow 2s ease-in-out infinite alternate;
+}
 
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            background: radial-gradient(circle at 55% 40%, rgba(255, 255, 255, 0.08), transparent 52%),
-                        radial-gradient(circle at 20% 80%, rgba(0, 255, 255, 0.06), transparent 60%);
-            opacity: 0.6;
-            mix-blend-mode: screen;
-        }
+@keyframes glow {
+from { text-shadow: 0 0 20px #00d4ff, 0 0 40px #00d4ff; }
+to { text-shadow: 0 0 30px #00d4ff, 0 0 50px #00d4ff, 0 0 70px #00d4ff; }
+}
 
-        body.has-overlay .game-header {
-            opacity: 0;
-            pointer-events: none;
-            transform: translateY(-10px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
+.stats{
+margin-bottom: 30px;
+font-size: clamp(0.9rem, 4vw, 1.2rem);
+font-weight: 400;
+background: rgba(0, 212, 255, 0.1);
+padding: clamp(8px, 2vw, 10px) clamp(15px, 4vw, 20px);
+border-radius: 25px;
+border: 1px solid #00d4ff;
+box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+}
 
-        /* --- Header: Clean & Spaced --- */
-        .game-header {
-            text-align: center;
-            margin-bottom: 30px;
-            z-index: 10;
-        }
+#grid{
+display: grid;
+gap: clamp(8px, 3vw, 20px);
+padding: clamp(10px, 4vw, 30px);
+background: rgba(255, 255, 255, 0.05);
+border-radius: 20px;
+border: 1px solid rgba(255, 255, 255, 0.1);
+box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+backdrop-filter: blur(10px);
+max-width: 90vw;
+overflow: auto;
+justify-items: center;
+}
 
-        h1 {
-            font-size: clamp(2rem, 10vw, 3rem);
-            font-weight: 900;
-            letter-spacing: 4px;
-            color: var(--neon-cyan);
-            text-transform: uppercase;
-            margin-bottom: 10px;
-            text-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
-        }
+.cell{
+width: clamp(35px, 8vw, 80px);
+height: clamp(35px, 8vw, 80px);
+background: linear-gradient(145deg, #1e1e1e, #2a2a2a);
+border: 2px solid #333;
+border-radius: 15px;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: clamp(6px, 2.5vw, 12px);
+font-weight: bold;
+cursor: pointer;
+transition: all 0.3s ease;
+box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+position: relative;
+overflow: hidden;
+aspect-ratio: 1;
+}
 
-        .stats-bar {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-        }
+.cell::before {
+content: '';
+position: absolute;
+top: 0;
+left: 0;
+right: 0;
+bottom: 0;
+background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+opacity: 0;
+transition: opacity 0.3s ease;
+}
 
-        .badge {
-            background: var(--panel-bg);
-            padding: 8px 20px;
-            border-radius: 50px;
-            border: 1px solid rgba(255,255,255,0.1);
-            font-size: 0.85rem;
-            font-weight: bold;
-            color: var(--text-low);
-            text-transform: uppercase;
-        }
+.cell:hover::before {
+opacity: 1;
+}
 
-        .badge span { color: var(--neon-cyan); margin-left: 5px; }
+.cell:hover {
+transform: scale(1.05);
+box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
 
-        /* --- Game Board Area --- */
-        #main-container {
-            position: relative;
-            background: var(--panel-bg);
-            padding: clamp(15px, 5vw, 30px);
-            border-radius: 28px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 25px 70px rgba(0,0,0,0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 300px;
-        }
+.start{
+border: 3px solid #00d4ff;
+color: #00d4ff;
+background: linear-gradient(145deg, #001122, #002244);
+text-shadow: 0 0 10px #00d4ff;
+}
 
-        #grid {
-            display: grid;
-            gap: 12px;
-            -webkit-user-select: none;
-            user-select: none;
-        }
+.end{
+border: 3px solid #ff6b6b;
+color: #ff6b6b;
+background: linear-gradient(145deg, #220011, #440022);
+text-shadow: 0 0 10px #ff6b6b;
+}
 
-        .cell {
-            width: clamp(50px, 12vw, 65px);
-            height: clamp(50px, 12vw, 65px);
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            font-weight: 900;
-            transition: all 0.2s ease;
-        }
+.active{
+background: linear-gradient(145deg, #00d4ff, #0099cc);
+color: #000;
+border-color: #00d4ff;
+box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+transform: scale(1.1);
+}
 
-        /* Dynamic Labels */
-        .cell.start { border: 2.5px solid var(--neon-cyan); color: var(--neon-cyan); }
-        .cell.start::after { content: 'START'; }
+.path{
+background: linear-gradient(145deg, #00d4ff, #0099cc);
+box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+}
 
-        .cell.end { border: 2.5px solid var(--neon-purple); color: var(--neon-purple); }
-        .cell.end::after { content: 'END'; }
+button{
+margin-top: 30px;
+padding: clamp(10px, 3vw, 15px) clamp(20px, 8vw, 40px);
+font-family: 'Orbitron', monospace;
+font-size: clamp(0.8rem, 3vw, 1rem);
+font-weight: 700;
+color: #fff;
+background: linear-gradient(145deg, #ff6b6b, #ee5a52);
+border: none;
+border-radius: 25px;
+cursor: pointer;
+transition: all 0.3s ease;
+box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+text-transform: uppercase;
+letter-spacing: 1px;
+}
 
-        .cell.active {
-            background: var(--neon-cyan);
-            color: #000;
-            border-color: #fff;
-            box-shadow: 0 0 25px var(--neon-cyan);
-            transform: scale(0.96);
-        }
+button:hover {
+transform: translateY(-2px);
+box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+background: linear-gradient(145deg, #ee5a52, #dc4545);
+}
 
-        .cell.path { background: rgba(0, 242, 255, 0.15); border-color: var(--neon-cyan); }
+button:active {
+transform: translateY(0);
+}
 
-        /* --- Professional Overlays (Fullscreen Intro + Win) --- */
-        .overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(5, 5, 10, 0.9);
-            -webkit-backdrop-filter: blur(22px);
-            backdrop-filter: blur(22px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 40px 20px;
-            text-align: center;
-            z-index: 9999;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-            animation: fadeIn 0.6s ease;
-        }
+/* Responsive breakpoints */
+@media (max-width: 1024px) {
+.controls {
+flex-direction: row;
+justify-content: center;
+}
+}
 
-        .overlay .overlay-card {
-            background: rgba(18, 18, 26, 0.82);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 30px;
-            padding: 40px 30px;
-            max-width: 420px;
-            width: 100%;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
-        }
+@media (max-width: 768px) {
+h1 {
+font-size: clamp(1.8rem, 6vw, 2.5rem);
+}
+.cell {
+width: clamp(40px, 10vw, 60px);
+height: clamp(40px, 10vw, 60px);
+}
+#grid {
+gap: clamp(10px, 2vw, 15px);
+padding: clamp(15px, 3vw, 20px);
+}
+.stats {
+font-size: clamp(0.95rem, 3vw, 1.1rem);
+}
+.controls {
+flex-direction: column;
+gap: 15px;
+}
+}
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(25px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+@media (max-width: 480px) {
+body {
+padding: 10px;
+}
+h1 {
+font-size: clamp(1.5rem, 7vw, 2rem);
+margin-bottom: 15px;
+}
+.cell {
+width: clamp(35px, 12vw, 50px);
+height: clamp(35px, 12vw, 50px);
+font-size: clamp(5px, 2vw, 8px);
+}
+#grid {
+gap: clamp(5px, 1.5vw, 10px);
+padding: clamp(10px, 2vw, 15px);
+max-width: 95vw;
+}
+.stats {
+font-size: clamp(0.85rem, 3.5vw, 1rem);
+padding: clamp(6px, 2vw, 8px) clamp(12px, 3vw, 15px);
+margin-bottom: 20px;
+}
+.controls {
+gap: 10px;
+}
+.sound-toggle {
+width: 40px;
+height: 40px;
+font-size: 1rem;
+}
+}
 
-        .hidden { visibility: hidden; opacity: 0; pointer-events: none; }
+@media (max-width: 360px) {
+.cell {
+width: clamp(30px, 14vw, 40px);
+height: clamp(30px, 14vw, 40px);
+font-size: clamp(4px, 2vw, 6px);
+}
+#grid {
+gap: 4px;
+padding: 8px;
+}
+.stats {
+font-size: 0.8rem;
+}
+button {
+padding: 8px 15px;
+font-size: 0.75rem;
+}
+}
 
-        .overlay h2 { 
-            font-size: clamp(2rem, 8vw, 2.8rem); 
-            color: var(--neon-cyan); 
-            margin-bottom: 15px; 
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 4px;
-            text-shadow: 0 0 22px rgba(0, 242, 255, 0.45);
-        }
+/* Landscape orientation for phones */
+@media (max-height: 500px) and (orientation: landscape) {
+body {
+padding: 5px;
+min-height: auto;
+height: 100vh;
+}
+h1 {
+font-size: clamp(1.2rem, 4vw, 1.8rem);
+margin-bottom: 10px;
+}
+#grid {
+padding: clamp(5px, 2vw, 10px);
+max-width: 80vw;
+}
+.cell {
+width: clamp(25px, 6vw, 40px);
+height: clamp(25px, 6vw, 40px);
+font-size: clamp(4px, 1.5vw, 6px);
+}
+.controls {
+flex-direction: row;
+gap: 10px;
+margin-top: 10px;
+}
+.stats {
+margin-bottom: 15px;
+font-size: clamp(0.7rem, 2.5vw, 0.9rem);
+}
+}
 
-        .overlay h2.success { 
-            color: #00ffaa;
-        }
+/* Large screens */
+@media (min-width: 1200px) {
+.cell {
+width: clamp(70px, 6vw, 90px);
+height: clamp(70px, 6vw, 90px);
+font-size: clamp(10px, 1vw, 14px);
+}
+#grid {
+gap: clamp(15px, 1.5vw, 25px);
+padding: clamp(25px, 3vw, 40px);
+}
+}
 
-        .overlay p { 
-            color: var(--text-low); 
-            font-size: 1.05rem; 
-            line-height: 1.6; 
-            margin-bottom: 35px; 
-            max-width: 360px;
-        }
+/* Ultra-wide screens */
+@media (min-width: 1920px) {
+.cell {
+width: 100px;
+height: 100px;
+font-size: 14px;
+}
+#grid {
+gap: 30px;
+padding: 50px;
+max-width: 1200px;
+}
+}
 
-        .overlay .glow-button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            max-width: 260px;
-            margin: 0 auto;
-            border-radius: 999px;
-            padding: 16px 0;
-            background: linear-gradient(145deg, rgba(0, 242, 255, 0.95), rgba(112, 0, 255, 0.9));
-            box-shadow: 0 16px 35px rgba(0, 242, 255, 0.55), 0 0 30px rgba(112, 0, 255, 0.35);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #000;
-            font-weight: 900;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
+/* Controls */
+.controls {
+display: flex;
+gap: 20px;
+margin-top: 20px;
+}
+.modal {
+display: none;
+position: fixed;
+z-index: 1000;
+left: 0;
+top: 0;
+width: 100%;
+height: 100%;
+background-color: rgba(0, 0, 0, 0.8);
+backdrop-filter: blur(5px);
+}
 
-        .overlay .glow-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 20px 50px rgba(0, 242, 255, 0.65), 0 0 40px rgba(112, 0, 255, 0.4);
-        }
+.modal-content {
+background: linear-gradient(145deg, #1a1a2e, #16213e);
+margin: 15% auto;
+padding: 30px;
+border: 1px solid #00d4ff;
+border-radius: 20px;
+width: 80%;
+max-width: 400px;
+text-align: center;
+box-shadow: 0 0 50px rgba(0, 212, 255, 0.5);
+animation: modalAppear 0.5s ease-out;
+}
 
-        .overlay .glow-button:active {
-            transform: translateY(0);
-            box-shadow: 0 14px 35px rgba(0, 242, 255, 0.55), 0 0 25px rgba(112, 0, 255, 0.35);
-        }
+@keyframes modalAppear {
+from { opacity: 0; transform: scale(0.8); }
+to { opacity: 1; transform: scale(1); }
+}
 
-        .overlay b { color: #fff; }
+.modal h2 {
+color: #00d4ff;
+margin-bottom: 20px;
+font-size: 2rem;
+text-shadow: 0 0 20px #00d4ff;
+}
 
-        button {
-            background: var(--neon-cyan);
-            color: #000;
-            border: none;
-            padding: 16px 50px;
-            border-radius: 14px;
-            font-size: 1.1rem;
-            font-weight: 900;
-            cursor: pointer;
-            text-transform: uppercase;
-            box-shadow: 0 10px 25px rgba(0, 242, 255, 0.4);
-            transition: transform 0.2s ease;
-        }
+.modal p {
+margin-bottom: 30px;
+font-size: 1.1rem;
+}
 
-        button:active { transform: scale(0.95); }
+.modal-buttons {
+display: flex;
+gap: 15px;
+justify-content: center;
+}
 
-        .hint-text {
-            margin-top: 30px;
-            color: #444;
-            font-size: 0.85rem;
-            text-align: center;
-            max-width: 320px;
-            line-height: 1.4;
-            font-weight: bold;
-        }
+.modal-buttons button {
+padding: 12px 25px;
+font-size: 0.9rem;
+}
 
-        /* Responsive Design */
-        @media (max-width: 600px) {
-            body {
-                padding: 10px;
-            }
-            .stats-bar {
-                flex-direction: column;
-                gap: 10px;
-            }
-            .overlay {
-                padding: 20px;
-            }
-            .overlay h2 {
-                font-size: 1.8rem;
-            }
-            .overlay p {
-                font-size: 1rem;
-                margin-bottom: 25px;
-            }
-            button {
-                padding: 14px 40px;
-                font-size: 1rem;
-            }
-            .hint-text {
-                font-size: 0.8rem;
-                margin-top: 20px;
-            }
-        }
-    </style>
+/* Controls */
+.controls {
+display: flex;
+gap: 20px;
+margin-top: 20px;
+}
+
+.controls button {
+margin: 0;
+}
+
+/* Sound toggle */
+.sound-toggle {
+position: absolute;
+top: 20px;
+right: 20px;
+background: rgba(0, 212, 255, 0.1);
+border: 1px solid #00d4ff;
+border-radius: 50%;
+width: 50px;
+height: 50px;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 1.2rem;
+transition: all 0.3s ease;
+}
+
+.sound-toggle:hover {
+background: rgba(0, 212, 255, 0.2);
+box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+}
+
+.sound-toggle.muted {
+opacity: 0.5;
+}
+
+</style>
 </head>
+
 <body>
 
-    <header class="game-header">
-        <h1>PATH WEAVER</h1>
-        <div class="stats-bar">
-            <div class="badge">STAGE <span><span id="level-num">1</span></span></div>
-            <div class="badge">GRID <span><span id="grid-size">3x3</span></span></div>
-        </div>
-    </header>
+<div class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊</div>
 
-    <main id="main-container">
-        <div id="grid"></div>
+<h1>PATH WEAVER</h1>
 
-        <div id="start-overlay" class="overlay">
-            <div class="overlay-card">
-                <h2>IQ MISSION</h2>
-                <p>Connect <b>START</b> to <b>END</b>.<br>Requirement: Fill <b>every single block</b> in one continuous path.</p>
-                <button class="glow-button" onclick="startGame()">Engage</button>
-            </div>
-        </div>
+<div class="stats">
+Level: <span id="level">1</span> |
+Grid: <span id="gridSize">3x3</span> |
+Moves: <span id="moves">0</span>
+</div>
 
-        <div id="win-overlay" class="overlay hidden">
-            <div class="overlay-card">
-                <h2 class="success">CLEARED!</h2>
-                <p>Logic validated. Complexity increasing for the next stage...</p>
-                <button class="glow-button" onclick="nextLevel()">Continue</button>
-            </div>
-        </div>
-    </main>
+<div id="grid"></div>
 
-    <footer class="hint-text">
-        TIP: Drag from START. You cannot skip any block to unlock the next level.
-    </footer>
+<div class="controls">
+<button onclick="nextLevel()">Next Level</button>
+<button onclick="restartGame()">Restart</button>
+</div>
+
+<!-- Win Modal -->
+<div id="winModal" class="modal">
+<div class="modal-content">
+<h2>LEVEL CLEARED!</h2>
+<p>Great job! Ready for the next challenge?</p>
+<div class="modal-buttons">
+<button onclick="nextLevel()">Next Level</button>
+<button onclick="closeModal()">Stay Here</button>
+</div>
+</div>
+</div>
 
 <script>
-    let level = 1;
-    let size = 3;
-    let path = [];
-    let isDrawing = false;
-    
-    const gridEl = document.getElementById('grid');
-    const levelVal = document.getElementById('level-num');
-    const sizeVal = document.getElementById('grid-size');
 
-    // Keep the intro overlay active until the player starts the game
-    document.body.classList.add('has-overlay');
+// Audio context for sound effects
+let audioContext;
+let soundEnabled = true;
+let moveSound, winSound;
 
-    function startGame() {
-        document.getElementById('start-overlay').classList.add('hidden');
-        document.body.classList.remove('has-overlay');
-        initGame();
-    }
+function initAudio() {
+if (typeof AudioContext !== 'undefined') {
+audioContext = new AudioContext();
+} else if (typeof webkitAudioContext !== 'undefined') {
+audioContext = new webkitAudioContext();
+}
 
-    function initGame() {
-        size = 2 + Math.ceil(level / 2);
-        if (size > 6) size = 6; 
+if (audioContext) {
+// Create simple sound effects using oscillators
+moveSound = createBeep(200, 0.1, 'sine');
+winSound = createBeep(400, 0.5, 'triangle');
+}
+}
 
-        levelVal.innerText = level;
-        sizeVal.innerText = `${size}x${size}`;
-        
-        path = [];
-        gridEl.innerHTML = '';
-        gridEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
-        document.getElementById('win-overlay').classList.add('hidden');
+function createBeep(frequency, duration, type) {
+return function() {
+if (!audioContext || !soundEnabled) return;
+const oscillator = audioContext.createOscillator();
+const gainNode = audioContext.createGain();
 
-        for (let i = 0; i < size * size; i++) {
-            const cell = document.createElement('div');
-            cell.classList.add('cell');
-            cell.dataset.index = i;
+oscillator.connect(gainNode);
+gainNode.connect(audioContext.destination);
 
-            if (i === 0) cell.classList.add('start');
-            if (i === (size * size) - 1) cell.classList.add('end');
+oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+oscillator.type = type;
 
-            // Listeners
-            cell.addEventListener('mousedown', () => startDraw(i));
-            cell.addEventListener('mouseenter', () => moveDraw(i));
-            cell.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(i); });
+gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
 
-            gridEl.appendChild(cell);
-        }
-    }
+oscillator.start(audioContext.currentTime);
+oscillator.stop(audioContext.currentTime + duration);
+};
+}
 
-    function startDraw(idx) {
-        if (idx !== 0) return;
-        isDrawing = true;
-        path = [idx];
-        updateUI();
-    }
+function toggleSound() {
+soundEnabled = !soundEnabled;
+const toggle = document.getElementById('soundToggle');
+toggle.innerText = soundEnabled ? '🔊' : '🔇';
+toggle.classList.toggle('muted');
+}
 
-    function moveDraw(idx) {
-        if (!isDrawing) return;
-        const last = path[path.length - 1];
-        if (last === idx) return;
+let level=1
+let size=3
+let path=[]
+let isDrawing=false
+let endIndex=0
+let moves=0
 
-        const r = Math.floor(idx / size), c = idx % size;
-        const lr = Math.floor(last / size), lc = last % size;
+const grid=document.getElementById("grid")
+const levelEl=document.getElementById("level")
+const gridSizeEl=document.getElementById("gridSize")
+const movesEl=document.getElementById("moves")
+const winModal=document.getElementById("winModal")
 
-        const isAdjacent = Math.abs(r - lr) + Math.abs(c - lc) === 1;
+initAudio()
+initGame()
 
-        if (isAdjacent) {
-            if (!path.includes(idx)) {
-                path.push(idx);
-                updateUI();
-                checkWin(idx);
-            } else if (path.length > 1 && idx === path[path.length - 2]) {
-                path.pop();
-                updateUI();
-            }
-        }
-    }
+function initGame(){
 
-    window.addEventListener('touchmove', (e) => {
-        if (!isDrawing) return;
-        const t = e.touches[0];
-        const el = document.elementFromPoint(t.clientX, t.clientY);
-        if (el && el.classList.contains('cell')) moveDraw(parseInt(el.dataset.index));
-    }, { passive: false });
+size=2+level
+if(size>8) size=8  // Increased max size
 
-    function updateUI() {
-        const cells = document.querySelectorAll('.cell');
-        cells.forEach(c => c.classList.remove('active', 'path'));
-        path.forEach((idx, i) => {
-            cells[idx].classList.add('active');
-            if (i < path.length - 1) cells[idx].classList.add('path');
-        });
-    }
+levelEl.innerText=level
+gridSizeEl.innerText=size+"x"+size
+movesEl.innerText=moves=0
 
-    function checkWin(idx) {
-        const total = size * size;
-        if (idx === total - 1 && path.length === total) {
-            isDrawing = false;
-            setTimeout(() => {
-                document.getElementById('win-overlay').classList.remove('hidden');
-            }, 300);
-        }
-    }
+grid.innerHTML=""
+grid.style.gridTemplateColumns=`repeat(${size},1fr)`
 
-    function nextLevel() {
-        level++;
-        initGame();
-    }
+path=[]
 
-    const stopDrawing = () => {
-        if (!isDrawing) return;
-        isDrawing = false;
-        const total = size * size;
-        if (path.length < total || path[path.length-1] !== (total-1)) {
-            path = [];
-            updateUI();
-        }
-    };
+// Generate solvable END with better logic
+do{
+endIndex=Math.floor(Math.random()*(size*size-1))+1
+}while(!isSolvable(endIndex))
 
-    window.addEventListener('mouseup', stopDrawing);
-    window.addEventListener('touchend', stopDrawing);
+for(let i=0;i<size*size;i++){
+
+const cell=document.createElement("div")
+cell.classList.add("cell")
+cell.dataset.index=i
+
+if(i===0){
+cell.classList.add("start")
+cell.innerText="START"
+}
+
+if(i===endIndex){
+cell.classList.add("end")
+cell.innerText="END"
+}
+
+cell.addEventListener("mousedown",(e)=>{
+e.preventDefault()
+startDraw(i)
+})
+cell.addEventListener("mouseenter",()=>moveDraw(i))
+
+cell.addEventListener("touchstart",(e)=>{
+e.preventDefault()
+startDraw(i)
+})
+
+grid.appendChild(cell)
+
+}
+
+}
+
+function isSolvable(end){
+const startColor = (0 + 0) % 2
+const endColor = (Math.floor(end/size) + end % size) % 2
+const total = size * size
+
+// For even grids, ensure different colors for solvability
+if(total % 2 === 0){
+return startColor !== endColor
+}
+
+// For odd grids, always solvable in theory, but add some randomness
+return Math.random() > 0.3
+}
+
+function startDraw(idx){
+
+if(idx!==0 || isDrawing) return
+
+isDrawing=true
+path=[idx]
+moves++
+
+updateUI()
+
+if(moveSound) moveSound()
+
+}
+
+function moveDraw(idx){
+
+if(!isDrawing) return
+
+const last=path[path.length-1]
+
+if(idx===last) return
+
+const r=Math.floor(idx/size)
+const c=idx%size
+
+const lr=Math.floor(last/size)
+const lc=last%size
+
+const adjacent=Math.abs(r-lr)+Math.abs(c-lc)===1
+
+if(adjacent){
+
+if(!path.includes(idx)){
+
+path.push(idx)
+moves++
+updateUI()
+checkWin(idx)
+
+if(moveSound) moveSound()
+
+}
+
+else if(idx===path[path.length-2]){
+
+path.pop()
+moves++
+updateUI()
+
+if(moveSound) moveSound()
+
+}
+
+}
+
+}
+
+window.addEventListener("touchmove",(e)=>{
+
+if(!isDrawing) return
+
+e.preventDefault()
+
+const touch = e.touches[0]
+const el = document.elementFromPoint(touch.clientX, touch.clientY)
+
+if(el && el.classList.contains("cell")){
+moveDraw(parseInt(el.dataset.index))
+}
+
+},{passive:false})
+
+function updateUI(){
+
+const cells=document.querySelectorAll(".cell")
+
+cells.forEach(c=>{
+c.classList.remove("active","path")
+})
+
+path.forEach((idx,i)=>{
+
+cells[idx].classList.add("active")
+
+if(i<path.length-1){
+cells[idx].classList.add("path")
+}
+
+})
+
+movesEl.innerText=moves
+
+}
+
+function checkWin(idx){
+
+const total=size*size
+
+if(idx===endIndex && path.length===total){
+
+if(winSound) winSound()
+
+setTimeout(()=>{
+showModal()
+},300)
+
+isDrawing=false
+
+}
+
+}
+
+function showModal(){
+winModal.style.display="flex"
+}
+
+function closeModal(){
+winModal.style.display="none"
+}
+
+function nextLevel(){
+
+closeModal()
+level++
+initGame()
+
+}
+
+function restartGame(){
+
+level=1
+initGame()
+
+}
+
+window.addEventListener("mouseup",stopDraw)
+window.addEventListener("touchend",stopDraw)
+
+function stopDraw(){
+
+if(!isDrawing) return
+
+isDrawing=false
+
+const total=size*size
+
+if(path.length<total || path[path.length-1]!==endIndex){
+
+path=[]
+updateUI()
+
+}
+
+}
+
+// Close modal when clicking outside
+winModal.addEventListener("click",(e)=>{
+if(e.target===winModal){
+closeModal()
+}
+})
 
 </script>
+
 </body>
 </html>
